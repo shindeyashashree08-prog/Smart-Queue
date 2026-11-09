@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+
+{% block title %}My Queue Dashboard - SmartQueue{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 2rem;">
+    <h2>Welcome, {{ session.get('user_name') }}! 👋</h2>
+    <p style="color: var(--text-muted);">Manage your digital queue tokens and track live queue movements in real time.</p>
+</div>
+
+<!-- REAL-TIME TURN NOTIFICATION BANNER (Triggered on Turn Arrival) -->
+<div id="turn-notification-banner" class="turn-alert-banner" style="display: none;">
+    <div class="turn-alert-content">
+        <div class="turn-alert-icon">🎉</div>
+        <div class="turn-alert-text">
+            <h3>It's Your Turn!</h3>
+            <p>Your token <strong id="turn-banner-token"></strong> is now called! Please proceed to the service counter immediately.</p>
+        </div>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="dismissTurnBanner()">Dismiss</button>
+    </div>
+</div>
+
+<!-- BROWSER NOTIFICATION PERMISSION CARD -->
+<div class="notif-card" id="notif-permission-box">
+    <div class="notif-info">
+        <div class="notif-icon-circle">🔔</div>
+        <div>
+            <strong>Desktop & Sound Turn Notifications</strong>
+            <p id="notif-status-text">Allow notifications to receive an alert and audio chime the second your token is called by the counter.</p>
+        </div>
+    </div>
+    <div class="notif-actions">
+        <button id="btn-request-notif" class="btn btn-primary btn-sm" onclick="requestNotificationPermission()">
+            🔔 Enable Notifications
+        </button>
+        <button class="btn btn-secondary btn-sm" onclick="testNotification()">
+            🔊 Test Sound & Alert
+        </button>
+    </div>
+</div>
+
+<!-- SECTION 1: ACTIVE TOKENS -->
+<section style="margin-bottom: 3rem;">
+    <div class="section-title">
+        <h3>📍 Active Queue Tokens</h3>
+        <span style="font-size: 0.85rem; color: var(--text-muted); font-weight: normal;">Live auto-refresh enabled</span>
+    </div>
+
+    {% if active_tokens %}
+        {% for token in active_tokens %}
+            <div class="token-card {% if token.status == 'called' or token.status == 'Serving' %}token-card-called{% endif %}" 
+                 data-live-token-id="{{ token.id }}" 
+                 data-token-number="{{ token.token_number }}"
+                 data-status="{{ token.status }}">
+                <div class="token-hero">
+                    <div class="token-number-box">
+                        <div class="token-label">Your Queue Token</div>
+                        <div class="token-big-number">{{ token.token_number }}</div>
+                        <div class="token-service-name">🏢 {{ token.service_name }}</div>
+                    </div>
+                    <div>
+                        <span class="token-status-pill status-{{ token.status|lower }}">{{ token.status }}</span>
+                    </div>
+                </div>
+
+                <div class="token-metrics">
+                    <div class="metric-box">
+                        <span>Currently Serving</span>
+                        <strong class="live-serving-token">{{ token.serving_token }}</strong>
+                    </div>
+                    <div class="metric-box">
+                        <span>People Ahead of You</span>
+                        <strong class="live-people-ahead" style="color: var(--primary);">{{ token.people_ahead }}</strong>
+                    </div>
+                    <div class="metric-box">
+                        <span>Estimated Wait Time</span>
+                        <strong class="live-wait-time" style="color: var(--warning);">{{ token.estimated_wait_time }} mins</strong>
+                    </div>
+                </div>
+
+                <div class="live-status-container" style="background: #f1f5f9; padding: 0.85rem 1.2rem; border-radius: var(--radius-sm); margin-bottom: 1rem; font-size: 0.92rem;">
+                    💡 <strong>Status:</strong> <span class="live-status-message">{{ token.status_message }}</span>
+                </div>
+
+                <div class="token-actions">
+                    {% if token.status == 'Waiting' %}
+                        <form action="{{ url_for('cancel_token', token_id=token.id) }}" method="POST" onsubmit="return confirmCancelToken('{{ token.token_number }}')">
+                            <button type="submit" class="btn btn-danger btn-sm">Cancel Token</button>
+                        </form>
+                    {% else %}
+                        <span style="color: var(--success); font-weight: 700; font-size: 1rem;">
+                            🔔 🎉 Your turn is called! Please proceed to the Counter.
+                        </span>
+                    {% endif %}
+                </div>
+            </div>
+        {% endfor %}
+    {% else %}
+        <div style="background: #ffffff; border: 1px dashed var(--border-color); border-radius: var(--radius-md); padding: 2.5rem; text-align: center;">
+            <div style="font-size: 2.5rem; margin-bottom: 0.75rem;">🎫</div>
+            <h4>You do not have any active tokens</h4>
+            <p style="color: var(--text-muted); font-size: 0.95rem; margin-top: 4px;">
+                Choose one of the services below to get your digital queue token right now.
+            </p>
+        </div>
+    {% endif %}
+</section>
+
+<!-- SECTION 2: GET NEW TOKEN -->
+<section style="margin-bottom: 3rem;">
+    <div class="section-title">
+        <h3>➕ Get a New Queue Token</h3>
+    </div>
+
+    <div class="services-grid">
+        {% for service in services %}
+            <div class="service-card">
+                <div>
+                    <div class="service-header">
+                        <span class="service-badge">{{ service.prefix }}</span>
+                    </div>
+                    <h3>{{ service.name }}</h3>
+                    <p>{{ service.description }}</p>
+                </div>
+                <div class="service-footer">
+                    <span class="service-time">⏱️ ~{{ service.avg_time_mins }} mins/person</span>
+                    <form action="{{ url_for('generate_token', service_id=service.id) }}" method="POST">
+                        <button type="submit" class="btn btn-primary btn-sm">Get Token</button>
+                    </form>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+</section>
+
+<!-- SECTION 3: TOKEN HISTORY -->
+<section>
+    <div class="section-title">
+        <h3>📜 My Previous Tokens History</h3>
+    </div>
+
+    <div class="table-card">
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Token No</th>
+                        <th>Service</th>
+                        <th>Issued At</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if history_tokens %}
+                        {% for item in history_tokens %}
+                            <tr>
+                                <td><strong>{{ item.token_number }}</strong></td>
+                                <td>{{ item.service_name }}</td>
+                                <td>{{ item.created_at }}</td>
+                                <td>
+                                    <span class="token-status-pill status-{{ item.status|lower }}">{{ item.status }}</span>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="4" style="text-align: center; color: var(--text-muted); padding: 2rem;">
+                                No previous token history found.
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+{% endblock %}

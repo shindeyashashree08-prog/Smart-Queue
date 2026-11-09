@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+
+{% block title %}SmartQueue - Smart Digital Queue Management System{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="hero">
+
+    <h1>Smart Digital Queue Management System</h1>
+    <p>
+        Say goodbye to long, frustrating physical queues. Generate your digital token online, track your exact position in real-time, and walk in right when it is your turn.
+    </p>
+    <div class="hero-actions">
+        {% if session.get('user_id') %}
+            <a href="{{ url_for('dashboard') }}" class="btn btn-primary btn-lg">Go to My Queue Dashboard →</a>
+        {% else %}
+            <a href="{{ url_for('register') }}" class="btn btn-primary btn-lg">Get Your Digital Token</a>
+            <a href="{{ url_for('login') }}" class="btn btn-outline btn-lg">User Login</a>
+            <a href="{{ url_for('admin_login') }}" class="btn btn-outline btn-lg">Admin Console</a>
+        {% endif %}
+    </div>
+</section>
+
+<!-- System Statistics -->
+<section class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-icon green">✅</div>
+        <div class="stat-details">
+            <h4>{{ stats.total_served }}</h4>
+            <p>Customers Served</p>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon amber">⏳</div>
+        <div class="stat-details">
+            <h4>{{ stats.active_queue }}</h4>
+            <p>Currently in Queue</p>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon blue">🎫</div>
+        <div class="stat-details">
+            <h4>{{ stats.total_registered }}</h4>
+            <p>Total Tokens Created</p>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon purple">⏱️</div>
+        <div class="stat-details">
+            <h4>~10 Mins</h4>
+            <p>Average Service Time</p>
+        </div>
+    </div>
+</section>
+
+<!-- Services Preview -->
+<section>
+    <div class="section-title">
+        <h2>Supported Public & Commercial Services</h2>
+    </div>
+
+    <div class="services-grid">
+        {% for service in services %}
+            <div class="service-card">
+                <div>
+                    <div class="service-header">
+                        <span class="service-badge">{{ service.prefix }}</span>
+                    </div>
+                    <h3>{{ service.name }}</h3>
+                    <p>{{ service.description }}</p>
+                </div>
+                <div class="service-footer">
+                    <span class="service-time">⏱️ Avg ~{{ service.avg_time_mins }} mins/person</span>
+                    {% if session.get('user_id') %}
+                        <form action="{{ url_for('generate_token', service_id=service.id) }}" method="POST">
+                            <button type="submit" class="btn btn-primary btn-sm">Take Token</button>
+                        </form>
+                    {% else %}
+                        <a href="{{ url_for('login') }}" class="btn btn-secondary btn-sm">Login to Join</a>
+                    {% endif %}
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+</section>
+
+<!-- Why SmartQueue Feature Highlights -->
+<section style="margin-top: 1rem;">
+    <div class="section-title">
+        <h2>Why Use SmartQueue?</h2>
+    </div>
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon blue">📱</div>
+            <div class="stat-details">
+                <h4 style="font-size: 1.1rem;">Digital Tokens</h4>
+                <p>Generate queue tokens instantly from your smartphone or laptop without paper slips.</p>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon green">📊</div>
+            <div class="stat-details">
+                <h4 style="font-size: 1.1rem;">Live Position Tracking</h4>
+                <p>Know exactly how many people are ahead of you and watch your queue count decrease.</p>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon amber">⏰</div>
+            <div class="stat-details">
+                <h4 style="font-size: 1.1rem;">Estimated Waiting Time</h4>
+                <p>Automatic algorithmic estimation based on service duration so you don't waste time.</p>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon purple">🛡️</div>
+            <div class="stat-details">
+                <h4 style="font-size: 1.1rem;">Admin Counter Control</h4>
+                <p>Smooth single-click counter management for call next, completion, or skip.</p>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

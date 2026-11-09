@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block title %}User Registration - SmartQueue{% endblock %}
+
+{% block content %}
+<div class="auth-wrapper">
+    <div class="auth-header">
+        <h2>Create an Account</h2>
+        <p>Register once to get digital queue tokens anywhere, anytime</p>
+    </div>
+
+    <form action="{{ url_for('register') }}" method="POST">
+        <div class="form-group">
+            <label class="form-label" for="fullname">Full Name</label>
+            <input type="text" id="fullname" name="fullname" class="form-control" placeholder="e.g. Yashashri Shinde" required>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="email">Email Address</label>
+            <input type="email" id="email" name="email" class="form-control" placeholder="yashashri@example.com" required>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="phone">Phone Number</label>
+            <input type="tel" id="phone" name="phone" class="form-control" placeholder="e.g. 9876543210" pattern="[0-9]{10}" title="Please enter a valid 10-digit mobile number" required>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="password">Create Password</label>
+            <input type="password" id="password" name="password" class="form-control" placeholder="Enter password (min 4 chars)" required>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="confirm_password">Confirm Password</label>
+            <input type="password" id="confirm_password" name="confirm_password" class="form-control" placeholder="Re-enter password" required>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-block btn-lg" style="margin-top: 1.5rem;">Register Now</button>
+    </form>
+
+    <div class="form-footer">
+        Already have an account? <a href="{{ url_for('login') }}">Log in here</a>
+    </div>
+</div>
+{% endblock %}

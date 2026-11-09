@@ -1,0 +1,202 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Control Panel - SmartQueue{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 2rem;">
+    <div>
+        <h2>Administrator Control Panel 🛡️</h2>
+        <p style="color: var(--text-muted);">Manage counter operations, dispatch next tokens, and monitor real-time queue traffic.</p>
+    </div>
+    <div>
+        <!-- Service Filter Form -->
+        <form method="GET" action="{{ url_for('admin_dashboard') }}" style="display: flex; align-items: center; gap: 0.5rem;">
+            <label for="service_id" style="font-weight: 600; font-size: 0.9rem;">Counter Service:</label>
+            <select name="service_id" id="service_id" class="form-control" onchange="this.form.submit()" style="padding: 0.5rem 1rem;">
+                {% for service in services %}
+                    <option value="{{ service.id }}" {% if service.id == selected_service_id %}selected{% endif %}>
+                        {{ service.name }} ({{ service.prefix }})
+                    </option>
+                {% endfor %}
+            </select>
+        </form>
+    </div>
+</div>
+
+<!-- STATS SUMMARY CARDS -->
+<section class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-icon blue">📊</div>
+        <div class="stat-details">
+            <h4>{{ stats.total }}</h4>
+            <p>Total Tokens Today</p>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon amber">⏳</div>
+        <div class="stat-details">
+            <h4>{{ stats.waiting }}</h4>
+            <p>Waiting in Line</p>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon purple">🎯</div>
+        <div class="stat-details">
+            <h4>{{ stats.serving }}</h4>
+            <p>Currently Serving</p>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon green">✅</div>
+        <div class="stat-details">
+            <h4>{{ stats.completed }}</h4>
+            <p>Completed Tokens</p>
+        </div>
+    </div>
+</section>
+
+<!-- LIVE COUNTER DISPATCH PANEL -->
+<section>
+    <div class="counter-box">
+        <div class="counter-details">
+            <h4>⚡ Live Active Counter</h4>
+            {% if current_serving %}
+                <div class="counter-token">{{ current_serving.token_number }}</div>
+                <div class="counter-customer">
+                    👤 <strong>{{ current_serving.fullname }}</strong> &bull; 📞 {{ current_serving.phone }}
+                </div>
+                <div style="font-size: 0.85rem; color: #94a3b8; margin-top: 4px;">
+                    Called at: {{ current_serving.called_at }} &bull; Service: {{ current_serving.service_name }}
+                </div>
+            {% else %}
+                <div class="counter-token" style="font-size: 2.2rem; color: #94a3b8;">No Active Customer</div>
+                <div class="counter-customer">The counter is currently idle. Click "Call Next Token" to begin.</div>
+            {% endif %}
+        </div>
+
+        <div class="counter-actions">
+            {% if current_serving %}
+                <form action="{{ url_for('admin_mark_completed', token_id=current_serving.id) }}" method="POST">
+                    <button type="submit" class="btn btn-success btn-lg">✔ Mark Completed</button>
+                </form>
+                <form action="{{ url_for('admin_skip_token', token_id=current_serving.id) }}" method="POST" onsubmit="return confirmSkipToken('{{ current_serving.token_number }}')">
+                    <button type="submit" class="btn btn-warning btn-lg">⏩ Skip</button>
+                </form>
+            {% endif %}
+
+            <form action="{{ url_for('admin_call_next', service_id=selected_service_id) }}" method="POST">
+                <button type="submit" class="btn btn-primary btn-lg">📢 Call Next Token</button>
+            </form>
+        </div>
+    </div>
+</section>
+
+<!-- WAITING CUSTOMERS QUEUE -->
+<section style="margin-bottom: 3rem;">
+    <div class="section-title">
+        <h3>⏳ Waiting Queue ({{ waiting_list|length }} customer{% if waiting_list|length != 1 %}s{% endif %})</h3>
+    </div>
+
+    <div class="table-card">
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Queue Position</th>
+                        <th>Token Number</th>
+                        <th>Customer Name</th>
+                        <th>Phone</th>
+                        <th>Registered At</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if waiting_list %}
+                        {% for item in waiting_list %}
+                            <tr>
+                                <td>
+                                    <span style="display: inline-block; width: 28px; height: 28px; background: #e2e8f0; border-radius: 50%; text-align: center; line-height: 28px; font-weight: 700; font-size: 0.85rem;">
+                                        #{{ loop.index }}
+                                    </span>
+                                </td>
+                                <td><strong style="color: var(--primary); font-size: 1.05rem;">{{ item.token_number }}</strong></td>
+                                <td>{{ item.fullname }}</td>
+                                <td>{{ item.phone }}</td>
+                                <td>{{ item.created_at }}</td>
+                                <td>
+                                    <span class="token-status-pill status-waiting">Waiting</span>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 2.5rem;">
+                                No customers currently waiting for this service.
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+
+<!-- RECENT TOKENS AUDIT TRAIL -->
+<section>
+    <div class="section-title">
+        <h3>📋 Master Token Record (All Services)</h3>
+    </div>
+
+    <div class="table-card">
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Token No</th>
+                        <th>Service</th>
+                        <th>Customer</th>
+                        <th>Created At</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if recent_tokens %}
+                        {% for item in recent_tokens %}
+                            <tr>
+                                <td><strong>{{ item.token_number }}</strong></td>
+                                <td>{{ item.service_name }}</td>
+                                <td>{{ item.fullname }}</td>
+                                <td>{{ item.created_at }}</td>
+                                <td>
+                                    <span class="token-status-pill status-{{ item.status|lower }}">{{ item.status }}</span>
+                                </td>
+                                <td>
+                                    {% if item.status == 'Waiting' or item.status == 'called' or item.status == 'Serving' %}
+                                        <div style="display: flex; gap: 4px;">
+                                            <form action="{{ url_for('admin_mark_completed', token_id=item.id) }}" method="POST">
+                                                <button type="submit" class="btn btn-success btn-sm">Done</button>
+                                            </form>
+                                            <form action="{{ url_for('admin_skip_token', token_id=item.id) }}" method="POST" onsubmit="return confirmSkipToken('{{ item.token_number }}')">
+                                                <button type="submit" class="btn btn-warning btn-sm">Skip</button>
+                                            </form>
+                                        </div>
+                                    {% else %}
+                                        <span style="color: var(--text-muted); font-size: 0.8rem;">Finished</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 2rem;">
+                                No tokens generated yet.
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+{% endblock %}
